@@ -1,0 +1,9 @@
+{
+  "label": "网络",
+  "position": 2,
+  "className": "red",
+  "link": {
+    "type": "generated-index",
+    "description": "计算机网络"
+  }
+}

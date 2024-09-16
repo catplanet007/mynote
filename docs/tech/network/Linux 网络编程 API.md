@@ -132,8 +132,8 @@ inet_ntop(AF_INET, &addr, str, INET_ADDRSTRLEN);
 int inet_aton(const char *cp, struct in_addr *inp);
 ```
 
-* `cp`: 字符串形式的 IPv4 地址。
-* `inp`: 指向 `struct in_addr`，用于存储结果。
+* `cp`：字符串形式的 IPv4 地址。
+* `inp`：指向 `struct in_addr`，用于存储结果。
 * 返回值: 成功返回非零值，输入无效返回 0。
 
 示例：
@@ -151,7 +151,7 @@ char *inet_ntoa(struct in_addr in);
 
 注意该函数不可重入。
 
-* `in`: `struct in_addr`，包含二进制形式的 IPv4 地址。
+* `in`：`struct in_addr`，包含二进制形式的 IPv4 地址。
 * 返回值: 返回转换后的 IPv4 地址字符串的指针，静态缓冲区，可能会被后续调用覆盖。
 
 示例：
@@ -270,10 +270,72 @@ struct in6_addr {
 
 ### host ==> ip
 
+#### gethostbyname
+
+```c title="netdb.h"
+struct hostent *gethostbyname(const char *name);
+```
+
+name 为需要解析的主机名，例如 "github.com"，也可以是一个数值格式的 IP 地址。
+
+返回值 `struct hostent` 定义如下：
+```c title="netdb.h"
+struct hostent {
+    char *h_name;       // 主机的正式名称
+    char **h_aliases;   // 主机的别名列表
+    int h_addrtype;     // 地址类型（通常是 AF_INET 或 AF_INET6）
+    int h_length;       // 地址长度
+    char **h_addr_list; // 网络地址的列表（IPv4 或 IPv6 地址，按网络字节序存储）
+};
+```
+
+`h_addr_list` 是一个指向地址列表的指针，实际的 IP 地址可以通过访问 `h_addr_list[0]` 来获取。
+
+示例：
+
+```c
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+    struct hostent *he;
+    struct in_addr **addr_list;
+    int i;
+
+    // 解析主机名为 IP 地址
+    if ((he = gethostbyname("www.baidu.com")) == NULL) {
+        // gethostbyname 失败
+        herror("gethostbyname");
+        return 1;
+    }
+
+    printf("official name: %s\n", he->h_name);
+    for (i = 0; he->h_aliases[i] != NULL; i++) {
+        printf("host alias: %s\n", he->h_aliases[i]);
+    }
+
+    // 打印所有 IP 地址
+    addr_list = (struct in_addr **)he->h_addr_list;
+    for (i = 0; addr_list[i] != NULL; i++) {
+        printf("IP Address: %s\n", inet_ntoa(*addr_list[i]));
+    }
+
+    return 0;
+}
+/* 输出
+official name: www.a.shifen.com
+host alias: www.baidu.com
+IP Address: 220.181.38.149
+IP Address: 220.181.38.150
+*/
+```
+
+#### getaddrinfo
+
 ```c title="netdb.h"
 int getaddrinfo(const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
-int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv,
-    size_t servlen, int flags);
 ```
 
 其中 `struct addrinfo` 结构体定义如下：
@@ -290,15 +352,101 @@ struct addrinfo {
 };
 ```
 
+* `node`：表示主机名或 IP 地址。
+  * 如果传递的是主机名（如 "github.com"），`getaddrinfo()` 会根据主机名查找对应的 IP 地址。
+  * 如果传递的是 IP 地址（如 "192.168.1.1" 或 "::1"），则会直接使用该地址。
+  * 如果设置为 NULL，表示不关心特定的主机地址，这在服务端套接字的创建中可能会使用。
+* `service`：表示服务名或端口号。
+  * 可以传递常见的服务名（如 "http" 或 "ftp"），函数会自动解析为对应的端口号（如 HTTP 为端口 80）。
+  * 也可以传递一个具体的端口号（如 "8080" 或 "443"）。
+  * 如果设置为 NULL，表示不关心特定的端口，这在客户端套接字的创建中可能会使用。
+* `hints`：指向 addrinfo 结构体的指针，用于指定查询时的过滤条件和约束。
+  * `hints` 提供了一种方式，让调用者限制 `getaddrinfo()` 的行为，例如只返回 IPv4 地址、只创建 TCP 连接等。
+  * `hints.ai_flags`：常见值包括：
+    * `AI_PASSIVE`：如果设置，返回的套接字地址可用于绑定服务端监听套接字。
+    * `AI_CANONNAME`：如果设置，`getaddrinfo()` 会将主机的规范名称返回到 `ai_canonname` 中。
+    * `AI_NUMERICHOST`：如果设置，`node` 被认为是一个数字地址（而不是域名），函数不会进行 DNS 解析。
+  * `hints.ai_socktype`：套接字类型，常见值为：
+    * `SOCK_STREAM`：表示创建 TCP 连接。
+    * `SOCK_DGRAM`：表示创建 UDP 套接字。
+  * `hints.ai_protocol`：协议类型，通常设置为 0，表示让系统自动选择。
+* `res`：指向 addrinfo 结构体的指针，保存 `getaddrinfo()` 返回的地址信息链表。
+  * `getaddrinfo()` 将为匹配的地址分配内存并通过 `res` 返回，结果是一个链表，每个节点都是一个 addrinfo 结构。
+  * 你需要遍历这个链表，找到你需要的地址信息。
+  * 调用 `freeaddrinfo()` 函数来释放动态分配的内存。
+* 成功时返回 0。
+  * 出错时返回一个非零的错误码，可以使用 gai_strerror() 函数将其转换为错误消息。
+
 示例：
 
 ```c
-struct addrinfo hints, *res;
-memset(&hints, 0, sizeof(hints));
-hints.ai_family = AF_INET;  // IPv4
-hints.ai_socktype = SOCK_STREAM;
-getaddrinfo("www.baidu.com", "80", &hints, &res);
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <string.h>
+
+void showHostIp(const char* hostname, const char *service) {
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC; // AF_INET 或 AF_INET6，AF_UNSPEC 表示不限 IPv4 或 IPv6
+    hints.ai_socktype = SOCK_STREAM;
+    int status = getaddrinfo(hostname, service, &hints, &res);
+    if (status != 0) {
+        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+        return;
+    }
+
+    printf("IP addresses for %s:\n\n", hostname);
+    char ipstr[INET6_ADDRSTRLEN]; // 能够容纳 IPv4 和 IPv6 地址的字符串
+    struct addrinfo *p;
+    // 遍历 res 链表中的每个 addrinfo 结构
+    for (p = res; p != NULL; p = p->ai_next) {
+        void *addr;
+        const char *ipver;
+
+        // 根据地址族来提取地址
+        if (p->ai_family == AF_INET) { // IPv4
+            struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+            addr = &(ipv4->sin_addr);
+            ipver = "IPv4";
+        } else if (p->ai_family == AF_INET6) { // IPv6
+            struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+            addr = &(ipv6->sin6_addr);
+            ipver = "IPv6";
+        } else {
+            printf("unkown protocol %x\n", p->ai_family);
+            continue; // 其他未知协议，跳过
+        }
+
+        // 将二进制 IP 地址转换为字符串
+        inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
+        printf("  %s: %s\n", ipver, ipstr);
+    }
+
+    freeaddrinfo(res); // 释放动态分配的内存
+}
+
+int main() {
+    showHostIp("www.baidu.com", NULL);
+    /* 输出：
+IP addresses for www.baidu.com:
+
+  IPv4: 220.181.38.149
+  IPv4: 220.181.38.150
+  IPv6: 240e:83:205:58:0:ff:b09f:36bf
+  IPv6: 240e:83:205:5a:0:ff:b05f:346b
+    */
+    return 0;
+}
 
 char host[NI_MAXHOST];
 getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
+```
+
+
+#### getnameinfo
+
+```c title="netdb.h"
+int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv,
+    size_t servlen, int flags);
 ```

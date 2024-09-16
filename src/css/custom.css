@@ -32,3 +32,18 @@
 .codeBlockTitle_node_modules-\@docusaurus-theme-classic-lib-theme-CodeBlock-Content-styles-module {
   padding: 0.4rem var(--ifm-pre-padding) !important;
 }
+
+code {
+  background-color: #4b4b4b; /* 深色背景 */
+  color: rgb(255, 255, 255);            /* 代码的字体颜色为白色 */
+}
+
+.anchorWithStickyNavbar_node_modules-\@docusaurus-theme-classic-lib-theme-Heading-styles-module {
+  position: relative;
+  left: -0.6em;
+}
+
+.anchorWithStickyNavbar_node_modules-\@docusaurus-theme-classic-lib-theme-Heading-styles-module::before {
+  content: "┃";
+  color:#5caed4;
+}

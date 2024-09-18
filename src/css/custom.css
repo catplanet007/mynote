@@ -29,8 +29,9 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
-.codeBlockTitle_node_modules-\@docusaurus-theme-classic-lib-theme-CodeBlock-Content-styles-module {
-  padding: 0.4rem var(--ifm-pre-padding) !important;
+/* 只匹配代码块区域内的标题 */
+div[class*="codeBlockTitle"] {
+  padding: 0.3rem var(--ifm-pre-padding) !important;
 }
 
 code {
@@ -38,12 +39,32 @@ code {
   color: rgb(255, 255, 255);            /* 代码的字体颜色为白色 */
 }
 
-.anchorWithStickyNavbar_node_modules-\@docusaurus-theme-classic-lib-theme-Heading-styles-module {
-  position: relative;
-  left: -0.6em;
+h1 {
+  --ifm-h1-font-size: 3.2rem !important;
+  font-size: var(--ifm-h1-font-size) !important;
 }
 
-.anchorWithStickyNavbar_node_modules-\@docusaurus-theme-classic-lib-theme-Heading-styles-module::before {
-  content: "┃";
-  color:#5caed4;
+h2[class*="anchorWithStickyNavbar"] {
+  --ifm-h2-font-size: 2.2rem !important;
+  font-size: var(--ifm-h2-font-size) !important;
+}
+
+h3[class*="anchorWithStickyNavbar"] {
+  --ifm-h3-font-size: 1.7rem !important;
+  font-size: var(--ifm-h3-font-size) !important;
+}
+
+h4[class*="anchorWithStickyNavbar"] {
+  --ifm-h4-font-size: 1.4rem !important;
+  font-size: var(--ifm-h4-font-size) !important;
+}
+
+h5[class*="anchorWithStickyNavbar"] {
+  --ifm-h5-font-size: 1.23rem !important;
+  font-size: var(--ifm-h5-font-size) !important;
+}
+
+h6[class*="anchorWithStickyNavbar"] {
+  --ifm-h6-font-size: 1.1rem !important;
+  font-size: var(--ifm-h6-font-size) !important;
 }

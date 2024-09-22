@@ -44,7 +44,7 @@ int main() {
 
 ### 字节序转换
 
-小端机通过网络发送整数值时，需要先将小端字节序转换为网络字节序。不过一般只需要转换整形的 IP 和端口号即可，buffer 都是按从左到右顺序表示的，不需要额外转换。
+小端机通过网络发送整数值时，需要先将小端字节序转换为网络字节序。不过一般只需要转换整形的 IP 和端口号即可，buffer 都是按从左到右的顺序表示的，不需要额外转换。
 
 ```c title="arpa/inet.h"
 // 将主机字节序的 16 位或 32 位整数转换为网络字节序（大端序）
@@ -451,4 +451,55 @@ getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMER
 ```c title="netdb.h"
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv,
     size_t servlen, int flags);
+```
+
+### ip ==> host
+
+#### gethostbyaddr
+
+`gethostbyaddr` 用于通过 IP 地址查找主机名的函数，它可以通过给定的 IP 地址返回相应的主机名和其他网络信息。
+
+示例：
+```c
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    struct in_addr addr;
+    struct hostent *host;
+
+    // 将点分十进制的 IP 地址转为二进制形式
+    inet_pton(AF_INET, "8.8.8.8", &addr);
+
+    // 使用 gethostbyaddr 查找主机
+    host = gethostbyaddr(&addr, sizeof(addr), AF_INET);
+    if (host == NULL) {
+        herror("gethostbyaddr");
+        return 1;
+    }
+
+    // 输出主机名
+    printf("Host name: %s\n", host->h_name);
+
+    // 输出别名
+    char **aliases = host->h_aliases;
+    while (*aliases != NULL) {
+        printf("Alias: %s\n", *aliases);
+        aliases++;
+    }
+
+    // 输出 IP 地址
+    char **addr_list = host->h_addr_list;
+    while (*addr_list != NULL) {
+        char ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, *addr_list, ip, INET_ADDRSTRLEN);
+        printf("IP Address: %s\n", ip);
+        addr_list++;
+    }
+
+    return 0;
+}
 ```

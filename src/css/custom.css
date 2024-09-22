@@ -35,8 +35,12 @@ div[class*="codeBlockTitle"] {
 }
 
 code {
-  background-color: #4b4b4b; /* 深色背景 */
-  color: rgb(255, 255, 255);            /* 代码的字体颜色为白色 */
+  background-color: #ede7e7; /* 深色背景 */
+  color: rgb(0, 0, 0);            /* 代码的字体颜色为白色 */
+  padding-left: 0.25em;
+  padding-right: 0.25em;
+  border: 0px;
+  border-radius: 0.2em;
 }
 
 h1 {

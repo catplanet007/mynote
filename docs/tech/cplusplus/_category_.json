@@ -1,0 +1,9 @@
+{
+  "label": "C++",
+  "position": 1,
+  "className": "red",
+  "link": {
+    "type": "generated-index",
+    "description": "C++相关"
+  }
+}

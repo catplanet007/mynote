@@ -1,0 +1,9 @@
+{
+  "label": "性能优化",
+  "position": 1,
+  "className": "red",
+  "link": {
+    "type": "generated-index",
+    "description": "性能优化"
+  }
+}

@@ -1,0 +1,165 @@
+---
+sidebar_position: 1
+---
+
+## 平均负载
+
+```bash
+$ uptime
+02:34:03 up 2 days, 20:14,  1 user,  load average: 0.63, 0.83, 0.88
+```
+
+uptime 返回的是过去1分钟、5分钟、15分钟的平均负载（Load Average），可以看出变化趋势。
+
+负载定义：
+
+* 单位时间内处于**可运行（runnable）**和**不可中断状态（uninterruptable）**的平均进程数（**平均活跃进程数**）
+  * **可运行（runnable）**：正在使用CPU、等待CPU。ps 命令中的 Running 或 Runnable
+  * **不可中断（uninterruptable）**：等待IO。ps 命令中的 D 状态（Uninterrutible Sleep）
+* 注意要除以 CPU 核数，查看单核负载。例如平均负载为 2, 4 核机器上每个核的平均负载就是 0.5。
+
+经验值：单核负载超过 0.7 需要关注。
+
+* CPU 密集进程，使用大量 CPU 会导致平均负载升高，CPU 使用率也会高。
+* IO 密集进程，等待 I/O 也会导致平均负载升高，CPU 使用率不一定很高；
+* 大量等待 CPU 的进程调度也会导致平均负载升高，CPU 使用率也会比较高。
+
+### CPU 密集场景
+
+实验机器为阿里云轻量服务器，2 核，1.6G内存。
+
+模拟一个 CPU 使用率 100% 的场景
+```shell
+$ stress --cpu 1 --timeout 600
+```
+
+另一个终端运行 uptime 查看平均负载的变化情况：
+
+```shell
+# -d 参数表示高亮显示变化的区域
+$ watch -d uptime
+12:15:56 up 16 min,  4 users,  load average: 1.01, 0.55, 0.22
+```
+
+1 分钟的平均负载会慢慢增加到 1.00。
+
+另一个终端运行 mpstat 查看 CPU 使用率的变化情况：
+
+```shell
+# -P ALL 表示监控所有CPU，后面数字5表示间隔5秒后输出一组数据
+$ mpstat -P ALL 5
+Linux 5.15.0-107-generic (iZ2ze5ybozvutjqtoe2zk3Z)      09/23/2024      _x86_64_        (2 CPU)
+
+12:16:08 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+12:16:13 PM  all   50.35    0.00    0.50    0.00    0.00    0.10    0.00    0.00    0.00   49.05
+12:16:13 PM    0    2.01    0.00    1.01    0.00    0.00    0.20    0.00    0.00    0.00   96.78
+12:16:13 PM    1   98.40    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    1.60
+```
+
+正好有一个 CPU 的使用率为 100%，但它的 iowait 只有 0。这说明，平均负载的升高正是由于 CPU 使用率为 100% 。
+
+另一个终端运行 pidstat：
+
+```shell
+# 间隔5秒后输出1组数据
+$ pidstat -u 5 1
+13:37:07      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+13:37:12        0      2962  100.00    0.00    0.00    0.00  100.00     1  stress
+```
+
+从这里可以明显看到，stress 进程的 CPU 使用率为 100%。
+
+```shell
+# 间隔5秒后输出一组数据，-u表示CPU指标
+$ pidstat -u 5 1
+Linux 5.15.0-107-generic (iZ2ze5ybozvutjqtoe2zk3Z)      09/23/2024      _x86_64_        (2 CPU)
+
+12:38:32 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+12:38:37 PM     0      1314    0.20    0.00    0.00    0.00    0.20     1  AliYunDun
+12:38:37 PM     0      1325    0.40    0.20    0.00    0.00    0.60     1  AliYunDunMonito
+12:38:37 PM     0     10561    0.20    0.00    0.00    0.00    0.20     1  snapd
+12:38:37 PM     0     12755    0.20    0.00    0.00    0.00    0.20     0  aliyun-service
+12:38:37 PM  1000     34311  100.00    0.00    0.00    0.00  100.00     0  stress
+
+Average:      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+Average:        0      1314    0.20    0.00    0.00    0.00    0.20     -  AliYunDun
+Average:        0      1325    0.40    0.20    0.00    0.00    0.60     -  AliYunDunMonito
+Average:        0     10561    0.20    0.00    0.00    0.00    0.20     -  snapd
+Average:        0     12755    0.20    0.00    0.00    0.00    0.20     -  aliyun-service
+Average:     1000     34311  100.00    0.00    0.00    0.00  100.00     -  stress
+```
+
+### I/O 密集场景
+
+运行  stress  命令，但这次模拟 I/O  压力，即不停地执行 sync：
+
+```shell
+$ stress -i 1 --timeout 600
+```
+
+1 分钟的平均负载会慢慢增加到 1.06
+
+```shell
+$ watch -d uptime
+...,  load average: 1.06, 0.58, 0.37
+```
+
+其中一个 CPU 的系统 CPU 使用率升高到了 23.87，而 iowait 高达 67.53%。这说明，平均负载的升高是由于 iowait 的升高。
+
+```shell
+# 显示所有CPU的指标，并在间隔5秒输出一组数据
+$ mpstat -P ALL 5
+Linux 5.15.0-107-generic (iZ2ze5ybozvutjqtoe2zk3Z)      09/23/2024      _x86_64_        (2 CPU)
+12:44:35 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+12:44:40 PM  all    0.41    0.00   14.26   36.92    0.00    0.92    0.00    0.00    0.00   47.49
+12:44:40 PM    0    0.00    0.00   25.83   63.21    0.00    0.00    0.00    0.00    0.00   10.96
+12:44:40 PM    1    0.86    0.00    1.51    7.97    0.00    1.94    0.00    0.00    0.00   87.72
+```
+
+```shell
+# 间隔5秒后输出一组数据，-u表示CPU指标
+$ pidstat -u 5 1
+12:44:45 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+12:44:50 PM     0        90    0.00    2.80    0.00    0.00    2.80     0  kworker/0:1H-kblockd
+12:44:50 PM     0       149    0.00    0.60    0.00    0.00    0.60     1  kworker/1:1H-kblockd
+12:44:50 PM     0      1314    0.40    0.00    0.00    0.00    0.40     1  AliYunDun
+12:44:50 PM     0      1325    0.40    0.40    0.00    0.00    0.80     0  AliYunDunMonito
+12:44:50 PM     0      7654    0.00    0.20    0.00    0.00    0.20     1  kworker/1:1-events
+12:44:50 PM  1000     34383    0.00   22.20    0.00    3.60   22.20     0  stress
+12:44:50 PM  1000     34577    0.00    0.20    0.00    0.00    0.20     1  pidstat
+```
+
+### 大量进程场景
+
+使用 stress，但这次模拟的是 8 个进程：
+
+```shell
+$ stress -c 8 --timeout 600
+```
+
+```shell
+$ watch -n 1 -d uptime
+14:13:24 up  2:13, 10 users,  load average: 6.89, 2.52, 0.91
+```
+
+8 个进程在争抢 2 个 CPU，每个进程等待 CPU 的时间（也就是代码块中的 %wait 列）高达 75%。这些超出 CPU 计算能力的进程，最终导致 CPU 过载。
+
+```shell
+$ pidstat -u 5 1
+Linux 5.15.0-107-generic (iZ2ze5ybozvutjqtoe2zk3Z)      09/23/2024      _x86_64_        (2 CPU)
+
+02:12:58 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+02:13:03 PM     0      1314    0.20    0.00    0.00    0.00    0.20     0  AliYunDun
+02:13:03 PM     0      1325    0.20    0.40    0.00    0.00    0.60     1  AliYunDunMonito
+02:13:03 PM     0     12755    0.00    0.20    0.00    0.00    0.20     0  aliyun-service
+02:13:03 PM  1000     35267   24.40    0.00    0.00   74.60   24.40     1  stress
+02:13:03 PM  1000     35268   24.60    0.00    0.00   74.80   24.60     1  stress
+02:13:03 PM  1000     35269   24.60    0.00    0.00   74.60   24.60     0  stress
+02:13:03 PM  1000     35270   24.80    0.00    0.00   74.80   24.80     1  stress
+02:13:03 PM  1000     35271   24.80    0.00    0.00   74.80   24.80     0  stress
+02:13:03 PM  1000     35272   24.60    0.00    0.00   74.60   24.60     1  stress
+02:13:03 PM  1000     35273   24.60    0.00    0.00   74.60   24.60     0  stress
+02:13:03 PM  1000     35274   24.40    0.00    0.00   74.60   24.40     0  stress
+02:13:03 PM  1000     35278    0.20    0.00    0.00    0.00    0.20     0  watch
+02:13:03 PM  1000     35537    0.00    0.20    0.00    0.00    0.20     0  pidstat
+```

@@ -440,9 +440,6 @@ IP addresses for www.baidu.com:
     */
     return 0;
 }
-
-char host[NI_MAXHOST];
-getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
 ```
 
 
@@ -452,6 +449,8 @@ getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMER
 int getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host, size_t hostlen, char *serv,
     size_t servlen, int flags);
 ```
+
+TODO
 
 ### ip ==> host
 
@@ -503,3 +502,125 @@ int main() {
     return 0;
 }
 ```
+
+## socket
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int socket(int domain, int type, int protocol);
+```
+用于创建套接字（socket），返回一个文件描述符（即 socket）。
+
+- **domain**：指定使用的协议族，决定通信的域（地址类型）。
+   - 常用的值：
+     - `AF_INET`：IPv4 协议
+     - `AF_INET6`：IPv6 协议
+     - `AF_UNIX`（或 `AF_LOCAL`）：本地通信（Unix 域）
+
+- **type**：指定套接字的类型，决定数据的传输方式。
+   - 常用的值：
+     - `SOCK_STREAM`：字节流套接字，面向连接的通信（如 TCP）。
+     - `SOCK_DGRAM`：数据报套接字，面向无连接的通信（如 UDP）。
+     - `SOCK_RAW`：原始套接字，允许对 IP 层的直接访问。
+     - `SOCK_NONBLOCK`：kernel 2.6.17 后，支持和上面参数相与，表示创建非阻塞 socket。
+     - `SOCK_CLOEXEC`：kernel 2.6.17 后，支持和上面参数相与，表示 fork 创建子进程时关闭该 socket。
+
+- **protocol**：指定具体使用的协议，通常设置为 0 以选择默认协议。
+   - 对于 `SOCK_STREAM`，默认为 `IPPROTO_TCP`。
+   - 对于 `SOCK_DGRAM`，默认为 `IPPROTO_UDP`。
+
+- 返回值：
+  - 成功时，返回套接字描述符（一个非负整数）。
+  - 失败时，返回 `-1`，并设置 `errno` 来指示错误原因。
+    - **EACCES**：没有权限创建套接字。
+    - **EMFILE**：进程已达到打开文件的最大数量。
+    - **ENFILE**：系统已达到文件描述符的限制。
+
+示例
+
+```cpp
+#include <iostream>
+#include <sys/socket.h>  // for socket
+#include <netinet/in.h>  // for AF_INET
+#include <unistd.h>      // for close
+#include <cstring>       // for strerror
+#include <cerrno>        // for errno
+
+int main() {
+    // 创建一个 IPv4 的 TCP 套接字
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    
+    if (sockfd == -1) {
+        std::cerr << "Socket creation failed: " << strerror(errno) << std::endl;
+        return 1;
+    } else {
+        std::cout << "Socket created successfully. Socket descriptor: " << sockfd << std::endl;
+    }
+
+    // 这里可以继续使用 sockfd 进行其他网络操作
+
+    // 使用完毕后关闭套接字
+    close(sockfd);
+
+    return 0;
+}
+```
+
+## bind
+
+```c
+#include <sys/types.h>
+#include <sys/socket.h>
+
+int bind(int sockfd, const struct sockaddr* my_addr, sockelen_t addrlen);
+```
+
+```cpp
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+int main() {
+    int sockfd;
+    struct sockaddr_in server_addr;
+
+    // 创建套接字
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // 设置服务器地址和端口
+    memset(&server_addr, 0, sizeof(server_addr)); // 清零
+    server_addr.sin_family = AF_INET;             // 使用IPv4
+    server_addr.sin_addr.s_addr = INADDR_ANY;     // 绑定到本地所有IP
+    server_addr.sin_port = htons(8080);           // 绑定端口 8080
+
+    // 绑定套接字到IP地址和端口
+    if (bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("bind");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Socket successfully bound to port 8080.\n");
+
+    // 关闭套接字
+    close(sockfd);
+    return 0;
+}
+```
+
+- **EACCES**: 没有权限绑定到给定的地址。通常是由于试图绑定到小于 1024 的端口（需要管理员权限）。
+- **EADDRINUSE**: 该地址已经被使用。该端口可能已经被其他进程绑定。比如将 socket 绑定到一个处于 `TIME_WAIT` 状态的 socket 地址。
+- **EBADF**: `sockfd` 不是有效的文件描述符。
+- **EINVAL**: `sockfd` 已经被绑定，不能重新绑定。
+- **ENOTSOCK**: `sockfd` 不是套接字。
+

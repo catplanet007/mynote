@@ -5,7 +5,7 @@ pidstat 用来监控 Linux 系统中各个进程（PID）的资源使用情况�
 pidstat [options] [interval] [count]
 ```
 
-### 使用举例
+### 使用示例
 
 #### 显示每个进程开机以来 CPU 使用情况
 ```shell
@@ -69,13 +69,14 @@ $ pidstat -p 1325 -d
 
 #### 开机以来，显示指定 pid 的上下文切换信息
 
-每个进程的自愿和非自愿上下文切换次数。
-
 ```shell
 $ pidstat -p 1325 -w
 02:02:30 PM   UID       PID   cswch/s nvcswch/s  Command
 02:02:30 PM     0      1325     29.87      0.11  AliYunDunMonito
 ```
+
+* cswch：表示每秒**自愿上下文切换（voluntary context switches）**的次数。指进程无法获取所需资源，导致的上下文切换。比如说， I/O、内存等系统资源不足时，就会发生自愿上下文切换。
+* nvcswch：表示每秒**非自愿上下文切换（non voluntary context switches）**的次数。指进程由于时间片已到等原因，被系统强制调度，进而发生的上下文切换。比如说，大量进程都在争抢 CPU 时，就容易发生非自愿上下文切换。
 
 #### 组合使用多种统计信息
 

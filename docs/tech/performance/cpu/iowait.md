@@ -7,6 +7,13 @@ tags: [Linux, 性能优化, CPU]
 
 当 iowait 升高时，进程很可能因为得不到硬件的响应，而长时间处于不可中断状态。从 ps 或者 top 命令的输出中，你可以发现它们都处于 D 状态，也就是不可中断状态（Uninterruptible Sleep）。
 
+ pidstat 中的 `%wait` 跟 top 中的 `iowait%` （缩写为 wa）对比，其实这是没有意义的，因为它们是完全不相关的两个指标。注意这个和 pidstat 中的 `%wait` 不是一个东西：
+
+* pidstat 中， `%wait` 表示进程等待 CPU 的时间百分比。
+* top 中 ，`iowait%` 则表示等待 I/O 的 CPU 时间百分比。
+
+等待 CPU 的进程已经在 CPU 的就绪队列中，处于运行状态；而等待 I/O 的进程则处于不可中断状态。
+
 top 和 ps 是最常用的查看进程状态的工具，我们就从 top 的输出开始。下面是一个 top 命令输出的示例，S 列（也就是 Status  列）表示进程的状态。从这个示例里，你可以看到 R、D、Z、S、I 等几个状态，它们分别是什么意思呢？
 
 ```shell

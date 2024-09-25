@@ -1,0 +1,8 @@
+{
+  "label": "磁盘",
+  "position": 4,
+  "className": "red",
+  "link": {
+    "type": "generated-index"
+  }
+}

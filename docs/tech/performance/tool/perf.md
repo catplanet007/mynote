@@ -2,6 +2,8 @@ perf 是 Linux 2.6.31 以后内置的性能分析工具。它以性能事件采�
 
 更多用法参考 https://www.brendangregg.com/perf.html
 
+[如何用perf工具分析Java程序？](https://time.geekbang.org/column/article/73738)
+
 ## 使用示例
 
 #### 查看热点函数

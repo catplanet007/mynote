@@ -518,4 +518,3 @@ stress           30407  30405    0 /usr/local/bin/stress -t 1 -d 1
 ```
 
 execsnoop 所用的 ftrace 是一种常用的动态追踪技术，一般用于分析 Linux 内核的运行时行为。
-

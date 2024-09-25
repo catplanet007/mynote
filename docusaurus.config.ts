@@ -42,6 +42,10 @@ const config: Config = {
     },
   ],
 
+  plugins: [
+    'plugin-image-zoom'
+  ],
+
   presets: [
     [
       'classic',
@@ -80,6 +84,21 @@ const config: Config = {
       minHeadingLevel: 2,
       maxHeadingLevel: 5,
     },
+    
+    imageZoom: {
+      // CSS selector to apply the plugin to, defaults to '.markdown img'
+      selector: '.markdown img',
+      // Optional medium-zoom options
+      // see: https://www.npmjs.com/package/medium-zoom#options
+      // options: {
+      //   margin: 24,
+      //   background: '#BADA55',
+      //   scrollOffset: 0,
+      //   container: '#zoom-container',
+      //   template: '#zoom-template',
+      // },
+    },
+
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {

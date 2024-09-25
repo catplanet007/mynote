@@ -1,0 +1,8 @@
+{
+  "label": "Linux",
+  "position": 5,
+  "className": "red",
+  "link": {
+    "type": "generated-index"
+  }
+}

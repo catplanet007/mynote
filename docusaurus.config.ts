@@ -5,7 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 
 const config: Config = {
-  title: 'MyDoc',
+  title: 'MyNote',
   tagline: '提高认知，积极行动',
   favicon: 'img/favicon.svg',
 
@@ -13,12 +13,12 @@ const config: Config = {
   url: 'https://catplanet007.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/mydoc/',
+  baseUrl: '/mynote/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'catplanet007', // Usually your GitHub org/user name.
-  projectName: 'mydoc', // Usually your repo name.
+  projectName: 'mynote', // Usually your repo name.
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
@@ -102,9 +102,9 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'MyDoc',
+      title: 'MyNote',
       logo: {
-        alt: 'MyDoc Logo',
+        alt: 'MyNote Logo',
         src: 'img/favicon.svg',
       },
       items: [
@@ -121,7 +121,7 @@ const config: Config = {
           label: '社科',
         },
         {
-          href: 'https://github.com/catplanet007/mydoc',
+          href: 'https://github.com/catplanet007/mynote',
           label: 'GitHub',
           position: 'right',
         },

@@ -1,5 +1,5 @@
 {
-  "label": "磁盘",
+  "label": "IO",
   "position": 4,
   "className": "red",
   "link": {

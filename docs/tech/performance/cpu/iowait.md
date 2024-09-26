@@ -63,11 +63,11 @@ $ top
 
 而僵尸进程的问题相对容易排查，使用 pstree 找出父进程后，去查看父进程的代码，检查 wait() / waitpid() 的调用，或是 SIGCHLD 信号处理函数的注册就行了。
 
-## 实验
+## 案例
 
 ### 大量不可中断状态和僵尸状态进程问题
 
-实验机器为阿里云轻量服务器，2 核，1.6G 内存。
+案例机器为阿里云轻量服务器，2 核，1.6G 内存。
 
 ```shell
 $ sudo docker run --privileged --name=app -itd feisky/app:iowait /app -d /dev/vda3

@@ -43,11 +43,11 @@ drwxr-xr-x 19 root root 4096 Sep 23 11:59 /
 
 理论上，一个文件读首先到Block Buffer, 然后到Page Cache。有了文件系统才有了Page Cache。
 
-在老的Linux上这两个Cache是分开的。那这样对于文件数据，会被Cache两次。这种方案虽然简单，但低效。后期 Linux 把这两个 Cache 统一了。对于文件，Page Cache 指向 Block Buffer，对于非文件则是 Block Buffer。这样就如文件实验的结果，文件操作，只影响 Page Cache，Raw 操作，则只影响 Buffer。比如一此 VM 虚拟机，则会越过 File System ，只接操作 Disk, 常说的 Direct IO。
+在老的Linux上这两个Cache是分开的。那这样对于文件数据，会被Cache两次。这种方案虽然简单，但低效。后期 Linux 把这两个 Cache 统一了。对于文件，Page Cache 指向 Block Buffer，对于非文件则是 Block Buffer。这样就如文件案例的结果，文件操作，只影响 Page Cache，Raw 操作，则只影响 Buffer。比如一此 VM 虚拟机，则会越过 File System ，只接操作 Disk, 常说的 Direct IO。
 
-## 实验
+## 案例
 
-实验机器为阿里云轻量服务器，2 核，1.6G 内存。
+案例机器为阿里云轻量服务器，2 核，1.6G 内存。
 
 为了减少缓存的影响，先运行下面的命令来清理系统缓存：
 

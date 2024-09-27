@@ -1,3 +1,3 @@
 # MyDoc
 
-https://catplanet007.github.io/mydoc
+https://catplanet007.github.io/mynote

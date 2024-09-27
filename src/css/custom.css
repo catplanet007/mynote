@@ -14,6 +14,9 @@
   --ifm-color-primary-lighter: #359962;
   --ifm-color-primary-lightest: #3cad6e;
   --ifm-code-font-size: 95%;
+  --ifm-font-family-base: 'Microsoft Yahei', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif, BlinkMacSystemFont,
+    'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol';
   --docusaurus-highlighted-code-line-bg: rgb(15, 2, 159);
 }
 
@@ -71,4 +74,9 @@ h5[class*="anchorWithStickyNavbar"] {
 h6[class*="anchorWithStickyNavbar"] {
   --ifm-h6-font-size: 1.1rem !important;
   font-size: var(--ifm-h6-font-size) !important;
+}
+
+table th, table td {
+  padding-top: 0.35em;
+  padding-bottom: 0.35em;
 }

@@ -560,7 +560,7 @@ Google的论文[《An Argument for Increasing TCP’s Initial Congestion Window�
 
 不同的拥塞控制算法降低速度的幅度并不相同，比如 CUBIC 算法会把拥塞窗口降为原先的 0.8 倍（也就是发送速度降到 0.8 倍）。
 
-一般来说 ssthresh 的值是 65535，单位是字节，当cwnd达到这个值时后，算法如下：
+一般来说 ssthresh 的值是 65535，单位是字节，当 cwnd 达到这个值时后，算法如下：
 
 1. 收到一个 ACK 时，cwnd = cwnd + 1/cwnd
 2. 当每过一个 RTT 时，cwnd = cwnd + 1

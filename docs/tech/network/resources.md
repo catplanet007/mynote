@@ -17,3 +17,9 @@
 - https://www.cloudflare.com/zh-cn/learning/
 - [High Performance Browser Networking](https://hpbn.co/)
 - [Usage statistics of HTTP/3 for websites](https://w3techs.com/technologies/details/ce-http3)
+- [Web 协议详解与抓包实战](https://www.youtube.com/watch?v=In6Lq9H4JxI&list=PLoZQ0sz6CBHGLlYNKB-yzDRasrAYytelS&ab_channel=MMax)
+
+todo
+- QUIC
+- http2, http3
+- BBR

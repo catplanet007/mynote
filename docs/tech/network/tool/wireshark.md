@@ -94,6 +94,9 @@ PING microsoft.com (20.70.246.20) 56(84) bytes of data.
 
 wireshark 支持自定义列
 
+#### 
+
+一般来说，Wireshark 自己分析得到的信息，都会用方括号括起来，而 TCP 报文本身的字段，是不会带这种方括号的
 
 
 

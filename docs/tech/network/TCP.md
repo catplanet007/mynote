@@ -16,7 +16,9 @@ import TCPStatusPng from './img/TCP-status.png';
 
 ### 第一次握手丢失
 
-客户端未收到 ACK，会重发 SYN 报文，默认重发 6 次。每次超时时间是上次的 2 倍。第一次的超时时间不同系统不同，写死在内核中，也有 1s 也有 3s 的。
+客户端未收到 ACK，会重发 SYN 报文，默认重发 6 次。每次超时时间是上次的 2 倍，即指数退避。时间不是精确的整秒，因为指数退避原则上不在精确的整秒做重试，最好是有所浮动。因为每个发送方都会在相同的时间段内重试，会导致它们同时另一次冲突。
+
+第一次的超时时间不同系统不同，写死在内核中，也有 1s 也有 3s 的。
 
 重传次数由内核参数 `tcp_syn_retries` 控制。
 
@@ -37,6 +39,8 @@ net.ipv4.tcp_synack_retries = 2
 ```
 
 #### 半连接和全连接队列
+
+[就是要你懂TCP--半连接队列和全连接队列](https://plantegg.github.io/2017/06/07/就是要你懂TCP--半连接队列和全连接队列/)
 
 内核维护 2 个队列：
 - 半连接队列（SYN 队列）：收到 SYN 后创建半连接对象，放入内核 SYN 队列
@@ -147,7 +151,7 @@ SeqNum 的增加是和传输的字节数相关的。例如 ISN 为 t，那么三
 
 注意第三次握手是可以携带数据的。
 
-## TCP fast open(TFO)
+### TCP fast open(TFO)
 
 Google 提出了 TCP fast open 方案（简称TFO），客户端可以在首个 SYN 报文中就携带请求，这节省了 1 个 RTT 的时间。
 
@@ -158,6 +162,12 @@ Google 提出了 TCP fast open 方案（简称TFO），客户端可以在首个 
 ```bash
 net.ipv4.tcp_fastopen = 3 # 0x01 表示客户端端开启 TFO，0x02表示服务端开启 TFO
 ```
+
+### 同时发起握手
+
+两端同时发 SYN 包到对方端口，相当于四次握手。
+
+![alt text](./img/syn-at-same-time.png)
 
 ## 四次挥手
 
@@ -208,6 +218,8 @@ net.ipv4.tcp_max_tw_buckets = 1048576
 
 HTTP/1.1 后默认支持 Keep-Alive，这样是由客户端主动断开连接，把 TIME_AWAIT 状态留在客户端。
 
+当服务器发送带有 “Connection: Close” 的响应时，客户端在接收完这个响应后，应该关闭与服务器的 TCP 连接，不保持持久连接状态。这时是客户端主动断连长链接。服务端可以借此实现优雅关闭连接，将流量切换到新机器。
+
 ### tcp_tw_reuse
 
 RFC 1323 实现了 TCP 扩展，以提高高带宽链路的性能。除此之外，它还定义了一个带有两个四字节时间戳字段的新 TCP 选项，第一个字节是 TCP 发送方的当前时钟时间戳，而第二个字节是从远程主机接收到的最新时间戳。
@@ -244,6 +256,12 @@ close 只是将 fd 引用计数减 1，只有 fd 引用计数为 0 时，才是�
 - `SHUT_WR`：关闭写，socket 写缓冲区数据会在关闭连接之前发出去，应用不能再对 socket 写数据。此时处于半关闭状态
 - `SHUT_RDWR`：同时关闭读写。
 
+### 半关闭
+
+四次挥手时，完成两次挥手后，此时处于半关闭状态。被动关闭方仍然可以继续发送数据给另一方，主动关闭方收到数据后仍然可以回复 ACK。
+
+![alt text](./img/half-close.png)
+
 ### 孤儿连接
 
 当一方进程异常退出时，内核就会发送 RST 报文来关闭，可以不走四次挥手强行关闭连接，但当报文延迟或者重复传输时，这种方式会导致数据错乱。
@@ -263,6 +281,10 @@ net.ipv4.tcp_max_orphans = 16384
 [同时关闭连接](http://www.tcpipguide.com/free/t_TCPConnectionTermination-4.htm)：
 
 ![alt text](./img/tcp-conn-termination.png) 
+
+### ICMP 控制报文
+
+Connection refused 不一定是 TCP 的 RST 导致的，ICMP Destination unreachable (Port unreachable) 报文也可以。抓包的时候如果过滤端口，是抓不到 ICMP 包的，此时会看到明明没有 TCP 任何包但是客户端报错了。
 
 ## 重传机制
 
@@ -390,13 +412,38 @@ TCP_QUICKACK (since Linux 2.4.4)
 
 窗口字段只有 2 个字节，因此它最多能表达 216 即 65535 字节大小的窗口。在 RTT 为 10ms 的网络中也只能到达 6MB/s 的最大速度。
 
-[RFC1323](https://tools.ietf.org/html/rfc1323) 定义了扩充窗口的方法，Linux 中打开这一功能，需要把 `tcp_window_scaling` 配置设为 1，此时窗口的最大值可以达到 1GB（230）。
+[RFC1323](https://tools.ietf.org/html/rfc1323) 定义了扩充窗口的方法，在 TCP Options 里面，增加一个 Window Scale 的字段，它表示原始 Window 值的左移位数，最高可以左移 14 位。
+
+Linux 中打开这一功能，需要把 `tcp_window_scaling` 配置设为 1，此时窗口的最大值可以达到 1GB（230）。
 
 ```bash
 net.ipv4.tcp_window_scaling = 1
 ```
 
+如果抓包就会看到貌似发送数据字节比接受窗口还大。
+
+![alt text](./img/sent-data-size-larger-than-recv-window-size.png)
+
+![alt text](./img/window-scale.png)
+
+* Kind：这个值是 3，每个 TCP Option 都有自己的编号，3 代表这是 Window Scale 类型。
+* Length：3 字节，含 Kind、Length（自己）、Shift count。
+* Shift count：6，也就是我们最为关心的窗口将要被左移的位数，2 的 6 次方就是 64。
+* 只有 SYN 包中才有这个 option，因为一个连接是不会变的。另外 SYN 包中窗口不会放大。
+
 ### 带宽时延积(BDP, Bandwidth Delay Product)
+
+带宽跟往返时间（RTT）相乘，就是在空中飞行的报文的最大数量，即带宽时延积。注意这里是 RTT 不是 RTT/2，因为对于发送方来说，以 ACK 为准。
+
+实际上更准确的是：
+
+$$
+inflightData = (latestSequenceSent + latestLenSent) - maxAckReceived
+$$
+
+假设最新发送的数据包序列号为 1000，长度为 50，而接收方已确认接收的最大序列号为 980，那么 inflightData = (1000 + 50) - 980 = 70，表示有 70 个单位的数据正在传输中，尚未得到接收方的确认。
+
+速度上限 = 发送窗口 / 往返时间。用英文可以表示为：velocity = window/RTT。
 
 当最大带宽是 100MB/s、网络时延是 10ms 时，这意味着客户端到服务器间的网络一共可以存放 100MB/s * 0.01s = 1MB 的字节。这个 1MB 是带宽与时延的乘积，所以它就叫做带宽时延积。这 1MB 字节存在于飞行中的 TCP 报文，它们就在网络线路、路由器等网络设备上。如果飞行报文超过了 1MB，就一定会让网络过载，最终导致丢包。
 
@@ -425,6 +472,40 @@ net.ipv4.tcp_mem = 88560        118080  177120
 在高并发服务器中，为了兼顾网速与大量的并发连接，**我们应当保证缓冲区的动态调整上限达到带宽时延积，而下限保持默认的 4K 不变即可。而对于内存紧张的服务而言，调低默认值是提高并发的有效手段**。
 
 如果这是网络 IO 型服务器，那么，调大 tcp_mem 的上限可以让 TCP 连接使用更多的系统内存，这有利于提升并发能力。需要注意的是，`tcp_wmem` 和 `tcp_rmem` 的单位是字节，而 `tcp_mem` 的单位是页面大小。而且，千万不要在 socket 上直接设置 `SO_SNDBUF` 或者 `SO_RCVBUF`，这样会关闭缓冲区的动态调整功能。
+
+### MSS（Max Segment Size）
+
+MTU 是三层报文的大小，在 MTU 的基础上刨去 IP 头部 20 字节和 TCP 头部 20 字节，就得到了最常见的 MSS 1460 字节。
+
+**在 TCP 这一层，分段的对象是应用层发给 TCP 的消息体（message）**。比如应用给 TCP 协议栈发送了 3000 字节的消息，那么 TCP 发现这个消息超过了 MSS（常见值为 1460），就必须要进行分段，比如可能分成 1460，1460，80 这三个 TCP 段。
+
+![alt text](./img/MSS.png)
+
+**在 IP 这一层，分片的对象是 IP 包的载荷**，它可以是 TCP 报文，也可以是 UDP 报文，还可以是 IP 层自己的报文比如 ICMP。
+
+假设一个“奇葩”的场景，也就是 MSS 为 1460 字节，而 MTU 却只有 1000 字节，那么 segmentation 和 fragmentation 将按照如下示意图来工作：
+
+![alt text](./img/MSS-fragmentation.png)
+
+> 我们假设 TCP 头部就是没有 Option 扩展的 20 字节。但实际场景里，很可能 MSS 小于 1460 字节，而 TCP 头部也超过 20 字节。
+
+机发出的 1500 字节的报文，不能设置 **DF（Don’t Fragment）位**，否则它既超过了 1000 这个路径最小 MTU，又不允许分片，那么网络设备只能把它丢弃。
+
+现在我们假设主机发出的报文是不带 DF 位的，这台网络设备会把它切分为一个 1000（也就是 960+20+20）字节的报文和一个 520（也就是 500+20）字节的报文。1000 字节的 IP 报文的 **MF 位（More Fragment）**会设置为 1，表示后续还有更多分片，而 520 字节的 IP 报文的 MF 字段为 0。
+
+接收端收到第一个 IP 报文时发现 MF 是 1，就会等第二个 IP 报文到达，又因为第二个报文的 MF 是 0，那么结合第二个报文的 fragment offset 信息（这个报文在分片流中的位置），就把这两个报文重组为一个新的完整的 IP 报文，然后进入正常处理流程，也就是上报给 TCP。
+
+**IP 分片是需要尽量避免**，因为路由各个环节未必会完全遵照所有的约定。通常设备收到一个超过其 MTU 的报文会发出 Destination Unreachable 的 ICMP 消息，但由于网络的复杂性， ICMP 消息经常会被拦截，导致发送端压根不知道自己的报文因为 MTU 超限而被丢弃了。比如你发出了大于 PMTU（Path MTU，路径最大传输单元） 的报文，寄希望于 MTU 较小的那个网络环节为你做分片，但事实上它可能不做分片，而是直接丢弃。就算如实分片了，也会增加延迟。Linux 默认配置就是 IP 报文都设置了 DF 位。
+
+### TSO（TCP Segmentation Offload）
+
+内核给 TCP 分段也会消耗 CPU，现在的网卡可以支持 TSO（TCP Segmentation Offload），所谓卸载 CPU 负担，由网卡来做。
+
+TSO 启用后，抓包看到的发送出去的报文可能会超过 MSS，实际网络上的包没有这么大，只是多个小包拼成的。同样的，在接收报文的方向，我们也可以启用 GRO（Generic Receive Offload）。
+
+比如下图中，TCP 载荷就有 2800 字节。
+
+![alt text](./img/TSO.png)
 
 ## 拥塞处理（Congestion Handling）
 
@@ -459,7 +540,7 @@ $ ip route | while read r; do
 慢启动的算法如下(cwnd 全称 Congestion Window)：
 
 1. 连接建好的开始先初始化 cwnd = 1，表明可以传一个 MSS 大小的数据。
-2. 每当收到一个 ACK，cwnd+=1; 呈线性上升
+2. 每当收到一个 ACK，cwnd+=1; 呈线性上升（效果上体现为步骤 3，例如假设当前 cwnd 为 4，那么一个 RTT 内收到 4 个 ACK，cwnd 变为 8）
 3. 每当过了一个 RTT，cwnd = cwnd*2; 呈指数让升
 4. 还有一个ssthresh（slow start threshold），是一个上限，当cwnd >= ssthresh时，就会进入“拥塞避免算法”
 
@@ -479,7 +560,7 @@ Google的论文[《An Argument for Increasing TCP’s Initial Congestion Window�
 
 不同的拥塞控制算法降低速度的幅度并不相同，比如 CUBIC 算法会把拥塞窗口降为原先的 0.8 倍（也就是发送速度降到 0.8 倍）。
 
-一般来说 ssthresh 的值是65535，单位是字节，当cwnd达到这个值时后，算法如下：
+一般来说 ssthresh 的值是 65535，单位是字节，当cwnd达到这个值时后，算法如下：
 
 1. 收到一个 ACK 时，cwnd = cwnd + 1/cwnd
 2. 当每过一个 RTT 时，cwnd = cwnd + 1
@@ -492,7 +573,7 @@ Google的论文[《An Argument for Increasing TCP’s Initial Congestion Window�
     - sshthresh =  cwnd /2
     - cwnd 重置为 1
     - 进入慢启动过程
-2. Fast Retransmit 算法，也就是在收到 3 个 duplicate ACK 时就开启重传，而不用等到 RTO 超时。
+2. 快速重传（Fast Retransmit） 算法，也就是在收到 3 个 duplicate ACK 时就开启重传，而不用等到 RTO 超时。
     - TCP Tahoe 的实现和 RTO 超时一样
     - TCP Reno 的实现是：
         - cwnd = cwnd /2
@@ -516,7 +597,7 @@ Google的论文[《An Argument for Increasing TCP’s Initial Congestion Window�
 - 如果再收到 duplicated Acks，那么 cwnd = cwnd + 1
 - 如果收到了新的 Ack，那么，cwnd = sshthresh ，然后就进入了拥塞避免的算法了
 
-这个算法也有问题，那就是——它依赖于 3 个重复的 Acks
+这个算法也有问题，那就是它依赖于 3 个重复的 Acks
 
 3个重复的 Acks 并不代表只丢了一个数据包，很有可能是丢了好多包。但这个算法只会重传一个，而剩下的那些包只能等到 RTO 超时，于是，进入了恶梦模式——超时一个窗口就减半一下，多个超时会超成 TCP 的传输速度呈级数下降，而且也不会触发 Fast Recovery 算法了。
 
@@ -535,9 +616,9 @@ net.ipv4.tcp_congestion_control = cubic
 
 ## 基于测量的拥塞控制算法
 
-传统拥塞控制算法以丢包作为判断拥塞的依据。
+传统拥塞控制算法以丢包作为判断拥塞的依据。但是当今网络设备的缓存越来越大，导致丢包这个行为不像以前缓存小的时代那么频繁，但是报文延迟的问题比以前严重了。所以，要更加准确地探测拥塞，我们应该更多地关注延迟，并基于延迟的变化作出拥塞窗口的调整。
 
-然而，网络刚出现拥塞时并不会丢包，而真的出现丢包时，拥塞已经非常严重了。如下图所示，像路由器这样的网络设备，都会有缓冲队列应对突发的、超越处理能力的流量：
+网络刚出现拥塞时并不会丢包，而真的出现丢包时，拥塞已经非常严重了。如下图所示，像路由器这样的网络设备，都会有缓冲队列应对突发的、超越处理能力的流量：
 
 ![alt text](./img/tcp-lose-segment.png)
 

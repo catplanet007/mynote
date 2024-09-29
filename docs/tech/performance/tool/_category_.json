@@ -1,7 +1,6 @@
 {
   "label": "性能优化工具",
   "position": 1,
-  "className": "red",
   "link": {
     "type": "generated-index",
     "description": "性能优化工具"

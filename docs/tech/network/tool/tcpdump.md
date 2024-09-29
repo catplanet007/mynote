@@ -7,6 +7,7 @@ tcpdump 基于 [libpcap](https://www.tcpdump.org/)，利用内核中的 `AF_PACK
 
 tcpdump 为你展示了每个网络包的详细细节，这就要求，在使用前，你必须要对网络协议有基本了解。而要了解网络协议的详细设计和实现细节， [RFC](https://www.rfc-editor.org/rfc-index.html) 当然是最权威的资料。
 
+
 ## 用法
 
 ```bash
@@ -22,7 +23,12 @@ tcpdump [选项] [过滤表达式]
 - `-c`：`tcpdump -c 5`，限制要抓取网络包的个数。
 - `-A`：`tcpdump -A`，以 ASCII 格式显示网络包内容（不指定时只显示头部信息）。
 - `-w`：`tcpdump -w file.pcap`，保存到文件中，文件名通常以 .pcap 为后缀。
+- `-r`：`tcpdump -r file.pcap 'tcp[tcpflags] & (tcp-rst) != 0'`，读取 file.pcap 文件并过滤
 - `-e`：`tcpdump -e`，输出链路层的头部信息。
+- `-s`：每个报文只抓一定长度，节省抓包文件的大小，**延长抓包时间**
+- `-v`,`-vv`,`-vvv`，打印更详细的报文信息
+- `-p`：关闭混杂模式。所谓混杂模式，也就是嗅探（Sniffing），就是把目的地址不是本机地址的网络报文也抓取下来。
+- `-X`：以 hex 或 ASCII 格式打印每个包内容
 
 ### tcpdump 常用过滤表达式
 
@@ -43,7 +49,11 @@ tcpdump [选项] [过滤表达式]
 - 特定状态的 TCP 包：`tcp[tcpflags]`
   - `tcpdump -nn "tcp[tcpflags] & tcp-syn != 0"`
   - `tcpdump -nn "tcp[tcpflags] & tcp-ack != 0"`
-  - `tcpdump -nn "tcp[tcpflags] & tcp-rst != 0"`
+  - `tcpdump -nn "tcp[tcpflags] & (tcp-rst) != 0"`
+    - 等价于 `tcpdump -nn 'tcp[13]&4 != 0'`
+  - `tcpdump -w file.pcap 'dst port 443 && tcp[20]==22 && tcp[25]==1'`
+    - `tcp[20]==22`：提取了 TCP 的第 21 个字节，由于 TCP 头部占 20 字节，TLS 又是 TCP 的载荷，那么 TLS 的第 1 个字节就是 TCP 的第 21 个字节，这个位置的值如果是 22（十进制），那么就表明这个是 TLS 握手报文
+    - `tcp[25]==1`：TCP 头部的第 26 个字节，如果它等于 1，那么就表明这个是 Client Hello 类型的 TLS 握手报文。
 
 ### tcpdump 输出格式
 
@@ -55,10 +65,181 @@ tcpdump [选项] [过滤表达式]
 
 根据 IP 地址反查域名、根据端口号反查协议名称，是很多网络工具默认的行为，而这往往会导致性能工具的工作缓慢。所以，通常，网络性能工具都会提供一个选项（比如 -n 或者 -nn），来禁止名称解析。
 
+#### 以 hex 或 ASCII 格式打印每个包内容
+例如服务器有一台 nginx 服务器
+
+```bash
+$ sudo docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS     NAMES
+14e6239d52c6   nginx     "/docker-entrypoint.鈥?   32 seconds ago   Up 31 seconds   80/tcp    wonderful_murdock
+
+$ sudo lsof -i :80
+COMMAND     PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+AliYunDun 70919 root   11u  IPv4 805447      0t0  TCP iZ2ze5ybozvutjqtoe2zk3Z:59738->100.100.30.26:http (ESTABLISHED)
+```
+
+用 `-X` 抓包，然后 telnet 连上，手动输入如下内容：
+```
+GET / HTTP/1.1
+Host: www.baidu.com
+
+
+```
+
+可以看到转到的包显示 nginx 返回信息
+
+import Foldable from '@site/src/components/Foldable';
+
+<Foldable title='telnet 127.0.0.1 80' defaultOpen={false} >
+```bash
+$ telnet 127.0.0.1 80
+Trying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+GET / HTTP/1.1
+Host: www.baidu.com
+
+HTTP/1.1 200 OK
+Server: nginx/1.21.5
+Date: Sat, 28 Sep 2024 05:10:05 GMT
+Content-Type: text/html
+Content-Length: 615
+Last-Modified: Tue, 28 Dec 2021 15:28:38 GMT
+Connection: keep-alive
+ETag: "61cb2d26-267"
+Accept-Ranges: bytes
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+</Foldable>
+
+<Foldable title='sudo tcpdump -i any -X port 80' defaultOpen={false} >
+```bash
+$ sudo tcpdump -i any -X port 80
+tcpdump: data link type LINUX_SLL2
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on any, link-type LINUX_SLL2 (Linux cooked v2), snapshot length 262144 bytes
+13:08:10.150294 lo    In  IP localhost.56790 > localhost.http: Flags [S], seq 807712343, win 65495, options [mss 65495,sackOK,TS val 3354499346 ecr 0,nop,wscale 7], length 0
+        0x0000:  4510 003c 3888 4000 4006 0422 7f00 0001  E..<8.@.@.."....
+        0x0010:  7f00 0001 ddd6 0050 3024 b657 0000 0000  .......P0$.W....
+        0x0020:  a002 ffd7 fe30 0000 0204 ffd7 0402 080a  .....0..........
+        0x0030:  c7f1 9912 0000 0000 0103 0307            ............
+13:08:10.150343 lo    In  IP localhost.http > localhost.56790: Flags [S.], seq 3986952917, ack 807712344, win 65483, options [mss 65495,sackOK,TS val 3354499346 ecr 3354499346,nop,wscale 7], length 0
+        0x0000:  4500 003c 0000 4000 4006 3cba 7f00 0001  E..<..@.@.<.....
+        0x0010:  7f00 0001 0050 ddd6 eda4 12d5 3024 b658  .....P......0$.X
+        0x0020:  a012 ffcb fe30 0000 0204 ffd7 0402 080a  .....0..........
+        0x0030:  c7f1 9912 c7f1 9912 0103 0307            ............
+13:08:10.150369 lo    In  IP localhost.56790 > localhost.http: Flags [.], ack 1, win 512, options [nop,nop,TS val 3354499346 ecr 3354499346], length 0
+        0x0000:  4510 0034 3889 4000 4006 0429 7f00 0001  E..48.@.@..)....
+        0x0010:  7f00 0001 ddd6 0050 3024 b658 eda4 12d6  .......P0$.X....
+        0x0020:  8010 0200 fe28 0000 0101 080a c7f1 9912  .....(..........
+        0x0030:  c7f1 9912                                ....
+......
+13:10:05.872475 lo    In  IP localhost.http > localhost.36802: Flags [P.], seq 239:854, ack 40, win 512, options [nop,nop,TS val 3354615069 ecr 3354615068], length 615: HTTP
+        0x0000:  4500 029b fb95 4000 4006 3ec5 7f00 0001  E.....@.@.>.....
+        0x0010:  7f00 0001 0050 8fc2 f44a c70d 04c2 1811  .....P...J......
+        0x0020:  8018 0200 0090 0000 0101 080a c7f3 5d1d  ..............].
+        0x0030:  c7f3 5d1c 3c21 444f 4354 5950 4520 6874  ..].<!DOCTYPE.ht
+        0x0040:  6d6c 3e0a 3c68 746d 6c3e 0a3c 6865 6164  ml>.<html>.<head
+        0x0050:  3e0a 3c74 6974 6c65 3e57 656c 636f 6d65  >.<title>Welcome
+        0x0060:  2074 6f20 6e67 696e 7821 3c2f 7469 746c  .to.nginx!</titl
+        0x0070:  653e 0a3c 7374 796c 653e 0a68 746d 6c20  e>.<style>.html.
+        0x0080:  7b20 636f 6c6f 722d 7363 6865 6d65 3a20  {.color-scheme:.
+        0x0090:  6c69 6768 7420 6461 726b 3b20 7d0a 626f  light.dark;.}.bo
+        0x00a0:  6479 207b 2077 6964 7468 3a20 3335 656d  dy.{.width:.35em
+        0x00b0:  3b20 6d61 7267 696e 3a20 3020 6175 746f  ;.margin:.0.auto
+        0x00c0:  3b0a 666f 6e74 2d66 616d 696c 793a 2054  ;.font-family:.T
+        0x00d0:  6168 6f6d 612c 2056 6572 6461 6e61 2c20  ahoma,.Verdana,.
+        0x00e0:  4172 6961 6c2c 2073 616e 732d 7365 7269  Arial,.sans-seri
+        0x00f0:  663b 207d 0a3c 2f73 7479 6c65 3e0a 3c2f  f;.}.</style>.</
+        0x0100:  6865 6164 3e0a 3c62 6f64 793e 0a3c 6831  head>.<body>.<h1
+        0x0110:  3e57 656c 636f 6d65 2074 6f20 6e67 696e  >Welcome.to.ngin
+        0x0120:  7821 3c2f 6831 3e0a 3c70 3e49 6620 796f  x!</h1>.<p>If.yo
+        0x0130:  7520 7365 6520 7468 6973 2070 6167 652c  u.see.this.page,
+        0x0140:  2074 6865 206e 6769 6e78 2077 6562 2073  .the.nginx.web.s
+        0x0150:  6572 7665 7220 6973 2073 7563 6365 7373  erver.is.success
+        0x0160:  6675 6c6c 7920 696e 7374 616c 6c65 6420  fully.installed.
+        0x0170:  616e 640a 776f 726b 696e 672e 2046 7572  and.working..Fur
+        0x0180:  7468 6572 2063 6f6e 6669 6775 7261 7469  ther.configurati
+        0x0190:  6f6e 2069 7320 7265 7175 6972 6564 2e3c  on.is.required.<
+        0x01a0:  2f70 3e0a 0a3c 703e 466f 7220 6f6e 6c69  /p>..<p>For.onli
+        0x01b0:  6e65 2064 6f63 756d 656e 7461 7469 6f6e  ne.documentation
+        0x01c0:  2061 6e64 2073 7570 706f 7274 2070 6c65  .and.support.ple
+        0x01d0:  6173 6520 7265 6665 7220 746f 0a3c 6120  ase.refer.to.<a.
+        0x01e0:  6872 6566 3d22 6874 7470 3a2f 2f6e 6769  href="http://ngi
+        0x01f0:  6e78 2e6f 7267 2f22 3e6e 6769 6e78 2e6f  nx.org/">nginx.o
+        0x0200:  7267 3c2f 613e 2e3c 6272 2f3e 0a43 6f6d  rg</a>.<br/>.Com
+        0x0210:  6d65 7263 6961 6c20 7375 7070 6f72 7420  mercial.support.
+        0x0220:  6973 2061 7661 696c 6162 6c65 2061 740a  is.available.at.
+        0x0230:  3c61 2068 7265 663d 2268 7474 703a 2f2f  <a.href="http://
+        0x0240:  6e67 696e 782e 636f 6d2f 223e 6e67 696e  nginx.com/">ngin
+        0x0250:  782e 636f 6d3c 2f61 3e2e 3c2f 703e 0a0a  x.com</a>.</p>..
+        0x0260:  3c70 3e3c 656d 3e54 6861 6e6b 2079 6f75  <p><em>Thank.you
+        0x0270:  2066 6f72 2075 7369 6e67 206e 6769 6e78  .for.using.nginx
+        0x0280:  2e3c 2f65 6d3e 3c2f 703e 0a3c 2f62 6f64  .</em></p>.</bod
+        0x0290:  793e 0a3c 2f68 746d 6c3e 0a              y>.</html>.
+13:10:05.872483 lo    In  IP localhost.36802 > localhost.http: Flags [.], ack 854, win 507, options [nop,nop,TS val 3354615069 ecr 3354615069], length 0
+        0x0000:  4510 0034 7adb 4000 4006 c1d6 7f00 0001  E..4z.@.@.......
+        0x0010:  7f00 0001 8fc2 0050 04c2 1811 f44a c974  .......P.....J.t
+        0x0020:  8010 01fb fe28 0000 0101 080a c7f3 5d1d  .....(........].
+        0x0030:  c7f3 5d1d                                ..].
+```
+</Foldable>
+
+#### 抓取到 TLS 握手阶段的 Client Hello 报文
+解释见上面的，常用过滤表达式一节
+```bash
+$ tcpdump -w file.pcap 'dst port 443 && tcp[20]==22 && tcp[25]==1'
+```
+
+![alt text](./img/tcpdump-tsl-client-hello.png)
+
+![alt text](./img/tcpdump-tsl-client-hello2.png)
+
+#### 读取过滤后转存
+
+```bash
+$ tcpdump -r file.pcap 'tcp[tcpflags] & (tcp-rst) != 0' -w rst.pcap
+```
+
+#### 延长抓包时间
+
+一般来说，帧头是 14 字节，IP 头是 20 字节，TCP 头是 20~40 字节。如果你明确地知道这次抓包的重点是传输层，那么理论上，对于每一个报文，你只要抓取到传输层头部即可，也就是前 14+20+40 字节（即前 74 字节）：
+
+```bash
+$ tcpdump -s 74 -w file.pcap
+```
+
+如果是默认抓取 1500 字节，那么生成的抓包文件将是上面这个抓包文件的 20 倍。反过来说，使用同样的磁盘空间，上面这种方式，其抓包时间可以长达默认的 20 倍！
+
+应用层头部的长度跟二到四层的情况非常不同，应用层头部可能非常大，甚至可以超过 TCP 的 MSS。比如 HTTP 头部，小的话可能只有几十个字节，大的话可能要几十个 KB，也就是好多个 TCP segment 才放得下。这种时候就不要纠结如何节省抓取的报文长度了。
+
 
 ## Wireshark
 
-tcpdump 可以用 `-w` 参数保存 .pcap 文件，然后倒入到 Wireshark 中。
+tcpdump 可以用 `-w` 参数保存 .pcap 文件，然后导入到 Wireshark 中。
 
 ```bash
 # 保存 .pcap 文件

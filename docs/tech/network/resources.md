@@ -14,3 +14,6 @@
 - [Effective TCP/IP Programming](https://dbwu.tech/posts/network/effective-tcp-ip-programming/)
 - [图解网络](https://xiaolincoding.com/network/)
 - https://plantegg.github.io/categories/network/
+- https://www.cloudflare.com/zh-cn/learning/
+- [High Performance Browser Networking](https://hpbn.co/)
+- [Usage statistics of HTTP/3 for websites](https://w3techs.com/technologies/details/ce-http3)

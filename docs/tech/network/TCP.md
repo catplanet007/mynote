@@ -147,7 +147,7 @@ Seq 和 Ack 序号的范围都是 32 位 int。
 
 SeqNum 的增加是和传输的字节数相关的。例如 ISN 为 t，那么三次握手后客户端 SeqNum 为 t+1，这是客户端发送一个 Len：1440 的包，那么下次客户端的 SeqNum 为 t+1441。
 
-每次 AckNum = SeqNum + len（包的大小）。这样发送方明确知道server收到那些东西了。特例是三次握手和四次挥手，虽然 len 都是 0，但是 syn 和 fin 都要占用一个 seq 号，所以这里的 ack 都是 seq+1。
+每次 AckNum = SeqNum + len（包的大小）。这样发送方明确知道server收到那些东西了。特例是三次握手和四次挥手，虽然 len 都是 0，但是 syn 和 fin 都要占用一个 seq 号，所以这里的 ack 都是 seq+1。总的来说，ACK 确认的是所有小于 ACK 的序列号的包都已经送达，下次可以发送等于 ACK 号的序列的包。
 
 注意第三次握手是可以携带数据的。
 
@@ -323,9 +323,9 @@ Fast Retransmit 算法，不以时间驱动，而以数据驱动重传。如果�
 
 Selective Acknowledgment (SACK)（[RFC 2018](http://tools.ietf.org/html/rfc2018)），在 TCP 头里加一个 SACK 的东西，ACK 还是 Fast Retransmit 的 ACK，SACK 则是汇报收到的数据碎版。
 
-这样，在发送端就可以根据回传的SACK来知道哪些数据到了，哪些没有到。这个协议需要两边都支持。`net.ipv4.tcp_sack` 参数打开这个功能（Linux 2.4后默认打开）。
+这样，在发送端就可以根据回传的 SACK 来知道哪些数据到了，哪些没有到。这个协议需要两边都支持。`net.ipv4.tcp_sack` 参数打开这个功能（Linux 2.4后默认打开）。
 
-接收方 Reneging 问题，接收方有权把已经报给发送端的 SACK 里的数据丢弃。比如接收方要把内存给别的更重要的东西。发送方也不能完全依赖SACK，还是要依赖ACK，并维护Time-Out，如果后续的ACK没有增长，那么还是要把SACK的东西重传。，另外，接收端这边永远不能把SACK的包标记为Ack。
+接收方 Reneging 问题，接收方有权把已经报给发送端的 SACK 里的数据丢弃。比如接收方要把内存给别的更重要的东西。发送方也不能完全依赖 SACK，还是要依赖 ACK，并维护 Time-Out，如果后续的 ACK 没有增长，那么还是要把 SACK 的东西重传。，另外，接收端这边永远不能把 SACK 的包标记为Ack。
 
 SACK 会消费发送方的资源，参考[TCP SACK的性能权衡](https://www.cnblogs.com/lovemyspring/articles/4270318.html)。
 

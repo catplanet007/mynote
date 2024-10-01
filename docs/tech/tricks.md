@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-## 备份网站
+### 备份网站
 
 ```bash
 wget --restrict-file-names=windows -m -k -p -c --domains=coolshell.cn https://coolshell.cn/
@@ -19,7 +19,7 @@ wget --restrict-file-names=windows -m -k -p -c --domains=coolshell.cn https://co
 - `--limit-rate`：限制下载速度
   - `wget -m -k -p --limit-rate=100k [网站 URL]`
 
-## grep 二进制文件
+### grep 二进制文件
 
 二进制文件中有部分文本。
 
@@ -27,7 +27,7 @@ wget --restrict-file-names=windows -m -k -p -c --domains=coolshell.cn https://co
 strings trace.dat | grep do_sys_open 
 ```
 
-## 有权限却无法写入
+### 有权限却无法写入
 
 ```bash
 $ sudo echo do_sys_open > /sys/kernel/debug/tracing/set_graph_function
@@ -38,3 +38,15 @@ $ echo do_sys_open | sudo tee /sys/kernel/debug/tracing/set_graph_function
 # 或
 $ sudo sh -c "echo do_sys_open > /sys/kernel/debug/tracing/set_graph_function"
 ```
+
+### 让 man 手册支持鼠标滚轮
+```bash
+$ export LESS='-R -M --mouse'
+```
+这种方法缺点是无法支持鼠标选中复制了，滚动有点慢。
+
+另一种方式是：
+```bash
+$ export MANPAGER="less -X"
+```
+缺点是需要先使用空格向下翻页多次后，才可使用鼠标滚轮上下滚动。

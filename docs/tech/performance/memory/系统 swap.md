@@ -111,6 +111,25 @@ node 0 free: 4416 MB
 
 这个界面显示，系统中只有一个 Node，也就是 Node 0 ，而且编号为 0 和 1 的两个 CPU， 都位于 Node 0 上。另外，Node 0 的内存大小为 7977 MB，剩余内存为 4416 MB。
 
+再如
+```bash
+$ numactl --hardware
+available: 2 nodes (0-1)
+node 0 cpus: 0 1 2 3 4 5 6 7 8 9 10 11 24 25 26 27 28 29 30 31 32 33 34 35
+node 0 size: 130950 MB
+node 0 free: 108256 MB
+node 1 cpus: 12 13 14 15 16 17 18 19 20 21 22 23 36 37 38 39 40 41 42 43 44 45 46 47
+node 1 size: 131072 MB
+node 1 free: 122995 MB
+node distances:
+node   0   1 
+  0:  10  21 
+  1:  21  10 
+```
+其中 CPU0～11，24～35 的 local node 为 node 0；而 CPU12～23，36～47 的 local node 为 node 1。如下图所示：
+
+![alt text](./img/numa-example.png)
+
 前面提到的三个内存阈值（页最小阈值、页低阈值和页高阈值），都可以通过内存域在 proc 文件系统中的接口 `/proc/zoneinfo` 来查看。
 
 ```shell

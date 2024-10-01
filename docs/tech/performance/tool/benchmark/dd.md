@@ -77,3 +77,15 @@ GNU coreutils online help: <https://www.gnu.org/software/coreutils/>
 Full documentation <https://www.gnu.org/software/coreutils/dd>
 or available locally via: info '(coreutils) dd invocation'
 ```
+
+#### 生成1G文件
+
+- `dd`：是一个用于复制文件并进行转换的命令。
+- `if=/dev/zero`：表示输入文件为 `/dev/zero`，这个设备文件会不断产生零字节的数据。
+- `of=./dd.out`：表示输出文件为 `./dd.out`，即将生成的文件路径和名称。
+- `bs=4096`：表示每次读写的块大小为 4096 字节。
+- `count=((1024*256))`：表示要复制的块数量，这里 `1024*256` 是为了计算出足够的块数量使得生成的文件大小为 1GB（因为 `4096`（字节）`*1024*256 = 1073741824` 字节，即 1GB）。
+
+```bash
+$ dd if=/dev/zero of=./dd.out bs=4096 count=$((1024*256))
+```

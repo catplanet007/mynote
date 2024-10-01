@@ -54,6 +54,9 @@ tcpdump [选项] [过滤表达式]
   - `tcpdump -w file.pcap 'dst port 443 && tcp[20]==22 && tcp[25]==1'`
     - `tcp[20]==22`：提取了 TCP 的第 21 个字节，由于 TCP 头部占 20 字节，TLS 又是 TCP 的载荷，那么 TLS 的第 1 个字节就是 TCP 的第 21 个字节，这个位置的值如果是 22（十进制），那么就表明这个是 TLS 握手报文
     - `tcp[25]==1`：TCP 头部的第 26 个字节，如果它等于 1，那么就表明这个是 Client Hello 类型的 TLS 握手报文。
+- tcp.analysis 类过滤器
+  - `tcp.analysis.ack_rtt >0.2 and tcp.len == 0`：找到超过 200ms 才发回的确认报文
+  - `tcp.analysis.window_full`：找到所有的 TCP Window Full 的报文
 
 ### tcpdump 输出格式
 

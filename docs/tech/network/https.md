@@ -275,31 +275,86 @@ import dhAlgoPng from './img/dh-algo.png';
 
 <img src={dhAlgoPng} width="500"/>
 
-## TLS 握手过程
+问题1：中间人伪造攻击。
+- 向客户顿假装自己是服务端，进行一次 DH 密钥交换
+- 向服务端假装自己是客户端，进行一次 DH 密钥交换
+- 解决方法：用公钥数字证书进行身份验证
 
-TLS 握手，为方便记忆，可以视为 5 次握手
+问题2：乘法太多，基于大因数分解，需要较长的密钥位数
 
-#### 消息 1：客户端发起请求（ClientHello）
+### ECDH 密钥交换协议
 
-客户端向服务器发送连接请求，此请求明文包含客户端支持的 TLS 版本、加密套件列表（包含各种加密算法组合）以及一个随机数（ClientRandom）
+#### ECC 椭圆曲线
 
-#### 消息 2：服务器响应（ServerHello）
-服务器收到客户端请求后，确定双方都支持的最高 TLS 版本、选择一种加密套件，明文并发送回一个随机数（ServerRandom）以及服务器的数字证书等信息给客户端。如果需要，服务器还可能发送 ServerKeyExchange 消息，用于特定的密钥交换方式。
+椭圆曲线的表达式：$ y^2 = x^3 + ax + b$，参数 $a$ 和 $b$ 要满足 $4a^3 + 27b^2 \neq 0$
 
-客户端拿到网站证书后，客户端用 CA 证书中公钥解密和验证网站证书。
+不是椭圆，只是某些情况下椭圆曲线确实与椭圆形状有关。
 
-#### 消息 3：密钥协商（ClientKeyExchange）
-客户端根据服务器选择的加密套件，生成一个预主密钥（Pre-Master Secret），并使用服务器的公钥加密后发送给服务器。或者在某些密钥交换方式下，直接发送其他用于生成密钥的信息。
+关于 X 轴对称（因为 y 平方）
 
-客户端和服务器根据之前交换的随机数（ClientRandom、ServerRandom）和预主密钥（或其他密钥交换信息），各自独立计算出相同的会话密钥。
+![alt text](./img/ecc椭圆曲线.png)
 
-#### 消息 4：客户端发送结束信号（Change Cipher Spec 和 Finished）
+椭圆曲线特性：+运算
 
-客户端通知服务器后续通信将使用协商好的会话密钥进行加密，并发送一个 Finished 消息，该消息是用会话密钥加密的，用于验证密钥交换和认证过程的正确性
+- $P + Q = R$
+    - +运算的几何意义：$R$ 为 $P$、$Q$ 连续与曲线焦点在 X 轴上的镜像
+    - $P + R = R$
+- +运算满足交换律，$a + b = b + a$
+- +运算满足结合律，$(a + b) + c = a + (b + c)$
 
-#### 消息 5：服务端发送结束信号（Change Cipher Spec 和 Finished）
+![alt text](./img/plus-calculation.png)
 
-服务器收到客户端的 Change Cipher Spec 消息后，也通知客户端后续通信将使用会话密钥进行加密，并发送一个 Finished 消息，同样用会话密钥加密，客户端验证该消息以确保整个握手过程的正确性。
+- 先计算出斜率 m，再计算出 R 点的坐标
+
+![alt text](./img/plus-calculation2.png)
+
+- $Q=K \cdot P$
+    - 已知 K 与 P，正向运算快速
+    - 已知 Q 与 P，计算 K 的逆向运算非常困难
+    - K 为双方各自的私钥，私钥乘以 P 得到公钥，然后公钥交换给对方
+
+#### ECDH 密钥交换协议
+- DH 密钥交换协议使用椭圆曲线后的变种，称为 Elliptic Curve Diffie–Hellman key Exchange，缩写为 ECDH，优点是比 DH 计算速度快、同等安全条件下密钥更短
+- ECC（Elliptic Curve Cryptography）：椭圆曲线密码学
+- 魏尔斯特拉斯椭圆函数（Weierstrass‘s elliptic functions）：y2=x3+ax+b
+
+2个RTT
+步骤：
+1. 客户端选定大整数 $K_a$ 作为私钥，基于选定曲线（即参数a,b的值）和曲线上的共享 $P$ 点，客户端计算出 $Q_a=K_a \cdot P$
+2. 客户端将 $Q_a$、选定曲线、共享点 P --> 服务端
+3. 服务端选定大整数 $K_b$ 作为私钥，计算 $Q_b = K_b \cdot P$，将 $Q_b$ --> 客户端端
+4. 客户端端生成密钥 $Q_b \cdot K_a = (x, y)$，其中 $x$ 为对称加密的密钥；服务端生成密钥 $Q_a \cdot K_b = (x, y)$，其中 $x$ 为对称加密的密钥
+
+$$
+Q_b \cdot K_a = K_a \cdot (K_b \cdot P) = K_a \cdot K_b \cdot P = K_b \cdot (K_a \cdot P) = Q_a \cdot K_b
+$$
+
+### TLS 1.2
+
+![alt text](./img/TLS1.2.png)
+
+#### FREAK 攻击
+
+- 2015 年发现漏洞
+- 由于支持多种安全套件，其中包括 90 年代引入的 512 位以下 RSA 密钥，该安全套件可轻易破解。中间人可以要求只用该安全套件，即可破解。
+
+![alt text](./img/FREAK.png)
+
+### TLS 1.3
+
+减少所支持的安全套件数量，去掉古老的安全套件
+
+使用 https://www.ssllabs.com/ssltest/index.html 可以查看某个网站支持哪些安全套件
+
+密钥交换步骤
+
+1个 RTT
+
+1. 客户端 Hello 发送 5 个安全套件的公钥给服务端
+2. 服务端挑选一个密钥套件的公钥，生成公私钥，发送给客户端
+3. 双方使用自己私钥和对方公钥生成对称秘钥，开始通信
+
+![alt text](./img/tls1.3.png)
 
 ## 重发和篡改
 

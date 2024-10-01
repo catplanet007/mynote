@@ -5,3 +5,6 @@
 
 [Awesome Resume](https://github.com/resumejob/awesome-resume)
 
+[CS自学指南](https://csdiy.wiki)
+
+[Side Project 指南](https://sideproject.guide/)

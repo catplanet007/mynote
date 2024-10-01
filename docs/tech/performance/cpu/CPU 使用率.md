@@ -147,7 +147,7 @@ Percentage of the requests served within a certain time (ms)
 $ ab -c 10 -n 10000 http://127.0.0.1:10000/
 ```
 
-然后执行 top，按下1查看每个 CPU 使用率
+然后执行 top，按下 <kbd>1</kbd> 查看每个 CPU 使用率
 
 ```shell
 $ top

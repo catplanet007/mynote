@@ -335,6 +335,27 @@ Duplicate SACK 又称 D-SACK，其主要使用了 SACK 来告诉发送方有哪�
 
 引入了 D-SACK，可以让发送方知道，是发出去的包丢了，还是回来的 ACK 包丢了。网络上出现了先发的包后到的情况（又称 reordering）。
 
+### 重传指标
+
+TCP 重传率是通过解析 `/proc/net/snmp` 这个文件里的指标计算出来的，这个文件里面和 TCP 有关的关键指标如下：
+
+| 指标 | 含义 |
+| --- | --- |
+| ActiveOpens | 主动打开的 TCP 连接数量 |
+| PassiveOpens | 被动打开的 TCP 连接数量 |
+| InSegs | 收到的 TCP 报文数量 |
+| OutSegs | 发出的 TCP 报文数量 |
+| EstabResets | TCP 连接处于 ESTABLISHED 时发生的 Reset |
+| AttemptFails | 连接失败的数量 |
+| CurrEstab | 当前状态为 ESTABLISHED 的 TCP 连接数 |
+| RetransSegs | 重传的报文数量 |
+
+TCP 重传率的计算公式如下：
+
+$$
+retrans = (RetransSegs－last RetransSegs) ／ (OutSegs－last OutSegs) * 100
+$$
+
 ## TCP 滑动窗口
 
 TCP通过Sliding Window来做流控（Flow Control）。
@@ -639,3 +660,8 @@ net.ipv4.tcp_congestion_control=bbr
 
 BBR 在高 RT 场景更有优势，跨地域的广域网或者网络状况不稳定的环境下，BBR 能够较好地探测网络的实际带宽和延迟，动态调整发送速率，避免过度拥塞。机房内网通常具有低延迟、高带宽且相对稳定的特点。在这种环境下，一些传统的拥塞控制算法可能已经能够很好地适应网络状况，而 BBR 由于其复杂的探测和调整机制，可能会出现一些不必要的开销，甚至在某些情况下可能不如传统算法高效。
 
+## TCP 收发包配置
+
+https://time.geekbang.org/column/article/285816
+
+![alt text](./img/tcp-send-recv-segment-config.png)

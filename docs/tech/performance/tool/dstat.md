@@ -156,3 +156,14 @@ $ dstat --load
 0.12 0.06 0.01
 0.12 0.06 0.01
 ```
+
+#### 查看 TCP 连接
+
+```bash
+$ dstat --tcp
+------tcp-sockets-------
+lis  act  syn  tim  clo
+  6    2    0    3    0
+  6    2    0    3    0
+  6    2    0    4    0
+```

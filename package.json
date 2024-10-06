@@ -14,7 +14,8 @@
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
     "typecheck": "tsc",
-	"leetcode": "find docs/tech/algo/leetcode/ -type f -name '*.md' | wc -l"
+	  "leetcode": "find docs/tech/algo/leetcode/ -type f -name '*.md' | wc -l && node scripts/check-leetcode-sidebar-position.js",
+    "sync": "git add . && git commit -m update && git push origin master"
   },
   "dependencies": {
     "@docusaurus/core": "3.5.2",

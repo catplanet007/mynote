@@ -1,5 +1,5 @@
 ---
-sidebar_position: 155
+sidebar_position: 412
 tags: [leetcode, 中等, 初级算法]
 ---
 
